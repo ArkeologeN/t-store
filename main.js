@@ -31,9 +31,12 @@ var WIDTH = window.innerWidth,
 	BULLETMOVESPEED = MOVESPEED * 5,
 	NUMAI = 5,
 	PROJECTILEDAMAGE = 20
-	, categories, category;
+	TIP_ID = 'elem-tip';
 // Global vars
-var t = THREE, scene, cam, renderer, controls, clock, projector, model, skin;
+var t = THREE, scene, cam, 
+		renderer, controls, clock, 
+		projector, model, skin, 
+		vector, categories, category;
 var runAnim = true, mouse = { x: 0, y: 0 }, walls = [];
 /*
 var finder = new PF.AStarFinder({ // Defaults to Manhattan heuristic
@@ -100,8 +103,6 @@ function init() {
 	
 	
 	// Display HUD
-	//$('body').append('<canvas id="radar" width="200" height="200"></canvas>');
-	//$('body').append('<div id="hud"><p>Health: <span id="health">100</span><br />Score: <span id="score">0</span></p></div>');
 	$('body').append('<div id="credits"><p>Developed at <a href="http://www.gnstudio.com/">GNStudio</a> by <a href="http://github.com/ArkeologeN">Hamza Waqas</a></p></div>');
 	
 	// Set up "hurt" flash
@@ -198,19 +199,29 @@ function setupScene() {
 		 new t.MeshLambertMaterial({/*color: 0xC5EDA0,*/map: t.ImageUtils.loadTexture('images/shelf-2.png')}),
 		 new t.MeshLambertMaterial({color: 0xFBEBCD}),
 	 ];
-	 
+	  
 	 APIRequest.loadCategories(function(data) {
 			categories = $.parseJSON(data);
+			console.log(categories);
 			if ( categories.success === true) {
 				for (var i = 0; i < categories.categories.length; i++) {
 					for (var j = 0, m = map[i].length; j < m; j++) {
 						if (map[i][j]) {
-							var wall = new t.Mesh(cube, materials[map[i][j]-1]);
+							var wall = new t.Mesh(cube, materials[map[i][j]-1])
+								, category = categories.categories[i];
+								wall.name = category.name;
 							wall.position.x = (i - units/2) * UNITSIZE;
 							wall.position.y = WALLHEIGHT/2;
 							wall.position.z = (j - units/2) * UNITSIZE;
-							console.log(typeof wall);
+							wall.shootFire = function(e) {
+								var div = $("<div />")
+								div.attr('id',TIP_ID);
+								div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
+								div.html(this.name)
+								$("body").append(div)
+							}
 							scene.add(wall);
+							walls.push(wall);
 						}
 					}
 				}
@@ -316,6 +327,27 @@ function onDocumentMouseMove(e) {
 	e.preventDefault();
 	mouse.x = (e.clientX / WIDTH) * 2 - 1;
 	mouse.y = - (e.clientY / HEIGHT) * 2 + 1;
+	
+	vector = new t.Vector3( 
+        ( e.clientX / window.innerWidth ) * 2 - 1, 
+        - ( e.clientY / window.innerHeight ) * 2 + 1, 
+        0.5 );
+        
+        // OK OK. Time to remove tooltip.
+        $('#'+TIP_ID).remove();
+	
+	projector.unprojectVector( vector, cam );
+    
+    var ray = new THREE.Ray( cam.position, 
+                             vector.subSelf( cam.position ).normalize() );
+    var intersects = ray.intersectObjects( walls );    
+
+    if ( intersects.length > 0 ) {
+                
+        intersects[0].object.shootFire(e);
+        
+    }
+	
 }
 
 // Handle window resizing
@@ -353,6 +385,9 @@ APIRequest.loadCategories =  function(cb) {
 		url: "http://mysma.gnstudio.biz/index.php?route=feed/web_api/categories&parent=0&level=2",
 		success: function(data) {
 			cb(data);
+		},
+		error: function() {
+			console.log(arguments);
 		}
 	});
 }
