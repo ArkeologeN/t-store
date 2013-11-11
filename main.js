@@ -3,6 +3,15 @@
  * - Coordinates are specified as (X, Y, Z) where X and Z are horizontal and Y
  *   is vertical
  */
+ 
+ THREE.Object3D.prototype.clear = function(){
+    var children = this.children;
+    for(var i = children.length-1;i>=0;i--){
+        var child = children[i];
+        child.clear();
+       // this.removeChild(child);
+    };
+};
 
 // 12 walls are hard-coded based upon no. of categories via API. (for now)
 var map = [ // 1  2  3  4  5  6  7  8  9
@@ -30,19 +39,20 @@ var WIDTH = window.innerWidth,
 	LOOKSPEED = 0.075,
 	BULLETMOVESPEED = MOVESPEED * 5,
 	NUMAI = 5,
-	PROJECTILEDAMAGE = 20
+	PROJECTILEDAMAGE = 20,
 	TIP_ID = 'elem-tip';
+	
 // Global vars
-var t = THREE, scene, cam, 
+var t = THREE;
+var scene, cam, 
 		renderer, controls, clock, 
 		projector, model, skin, 
-		vector, categories, category;
+		vector, categories, category,
+		isSmallWorld = false, activeCat = null;
 var runAnim = true, mouse = { x: 0, y: 0 }, walls = [];
-/*
-var finder = new PF.AStarFinder({ // Defaults to Manhattan heuristic
-	allowDiagonal: true,
-}), grid = new PF.Grid(mapW, mapH, map);
-*/
+
+// DOM db.
+window.__db = window.__db || {};
 
 // Initialize and run on document ready
 $(document).ready(function() {
@@ -54,15 +64,6 @@ $(document).ready(function() {
 		
 		animate();
 	});
-	/*
-	new t.ColladaLoader().load('models/Yoshi/Yoshi.dae', function(collada) {
-		model = collada.scene;
-		skin = collada.skins[0];
-		model.scale.set(0.2, 0.2, 0.2);
-		model.position.set(0, 5, 0);
-		scene.add(model);
-	});
-	*/
 });
 
 // Setup
@@ -98,12 +99,15 @@ function init() {
 	renderer.domElement.style.backgroundColor = '#D6F1FF'; // easier to see
 	document.body.appendChild(renderer.domElement);
 	
-	// Track mouse position so we know where to shoot
+	// Track mouse position so we know where to see
 	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+	
+	// Track mouse position so we know which shelf is clicked.
+	document.addEventListener( 'click', onDocumentClicked, false );
 	
 	
 	// Display HUD
-	$('body').append('<div id="credits"><p>Developed at <a href="http://www.gnstudio.com/">GNStudio</a> by <a href="http://github.com/ArkeologeN">Hamza Waqas</a></p></div>');
+	//$('body').append('<div id="credits"><p>Developed at <a href="http://www.gnstudio.com/">GNStudio</a> by <a href="http://github.com/ArkeologeN">Hamza Waqas</a></p></div>');
 	
 	// Set up "hurt" flash
 	$('body').append('<div id="hurt"></div>');
@@ -173,7 +177,7 @@ function render() {
 }
 
 // Set up the objects in the world
-function setupScene() {
+function setupScene(subCat, catId) {
 	var UNITSIZE = 250, units = mapW;
 	
 	/*
@@ -199,17 +203,23 @@ function setupScene() {
 		 new t.MeshLambertMaterial({/*color: 0xC5EDA0,*/map: t.ImageUtils.loadTexture('images/shelf-2.png')}),
 		 new t.MeshLambertMaterial({color: 0xFBEBCD}),
 	 ];
-	  
-	 APIRequest.loadCategories(function(data) {
-			categories = $.parseJSON(data);
-			console.log(categories);
-			if ( categories.success === true) {
-				for (var i = 0; i < categories.categories.length; i++) {
+	 
+	 // If load subcategories;
+	 if (isSmallWorld === true) {
+		 // Yes
+		 APIRequest.loadSubCategories(function(data) {
+			 categories = data.categories;
+			 console.log(categories);
+			 window.__db.subCategories = categories;
+			if ( categories.length > 0) {
+				console.log("sdadasd");
+				for (var i = 0; i < categories.length; i++) {
 					for (var j = 0, m = map[i].length; j < m; j++) {
 						if (map[i][j]) {
 							var wall = new t.Mesh(cube, materials[map[i][j]-1])
-								, category = categories.categories[i];
+								, category = categories[i];
 								wall.name = category.name;
+								wall.ops = {id: category.category_id, name: category.name}
 							wall.position.x = (i - units/2) * UNITSIZE;
 							wall.position.y = WALLHEIGHT/2;
 							wall.position.z = (j - units/2) * UNITSIZE;
@@ -220,17 +230,55 @@ function setupScene() {
 								div.html(this.name)
 								$("body").append(div)
 							}
+							wall.shootClickFire = function(e) {
+								console.log(this.ops);
+							}
 							scene.add(wall);
 							walls.push(wall);
 						}
 					}
 				}
 			}
-	 });
-	 
-	
-	
-	
+		 });
+	 } else {
+		 // NO. Its categories world.
+		 APIRequest.loadCategories(function(data) {
+			categories = data.categories;
+			window.__db.categories = categories;
+			if ( categories.length > 0) {
+				for (var i = 0; i < categories.length; i++) {
+					for (var j = 0, m = map[i].length; j < m; j++) {
+						if (map[i][j]) {
+							var wall = new t.Mesh(cube, materials[map[i][j]-1])
+								, category = categories[i];
+								wall.name = category.name;
+								wall.ops = {id: category.category_id, name: category.name}
+							wall.position.x = (i - units/2) * UNITSIZE;
+							wall.position.y = WALLHEIGHT/2;
+							wall.position.z = (j - units/2) * UNITSIZE;
+							wall.shootFire = function(e) {
+								var div = $("<div />")
+								div.attr('id',TIP_ID);
+								div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
+								div.html(this.name)
+								$("body").append(div)
+							}
+							wall.shootClickFire = function(e) {
+								scene.clear();
+								isSmallWorld = true;
+								activeCat = this.ops.id;
+								init();
+								animate();
+								//render();
+							}
+							scene.add(wall);
+							walls.push(wall);
+						}
+					}
+				}
+			}
+		 });
+	 }	
 	
 	// Lighting
 	var directionalLight1 = new t.DirectionalLight( 0xF7EFBE, 0.7 );
@@ -243,11 +291,6 @@ function setupScene() {
 
 var ai = [];
 var aiGeo = new t.CubeGeometry(40, 40, 40);
-function setupAI() {
-	for (var i = 0; i < NUMAI; i++) {
-//addAI();
-	}
-}
 
 
 function getAIpath(a) {
@@ -313,16 +356,6 @@ var bullets = [];
 var sphereMaterial = new t.MeshBasicMaterial({color: 0x333333});
 var sphereGeo = new t.SphereGeometry(2, 6, 6);
 
-/*
-function loadImage(path) {
-	var image = document.createElement('img');
-	var texture = new t.Texture(image, t.UVMapping);
-	image.onload = function() { texture.needsUpdate = true; };
-	image.src = path;
-	return texture;
-}
-*/
-
 function onDocumentMouseMove(e) {
 	e.preventDefault();
 	mouse.x = (e.clientX / WIDTH) * 2 - 1;
@@ -341,13 +374,33 @@ function onDocumentMouseMove(e) {
     var ray = new THREE.Ray( cam.position, 
                              vector.subSelf( cam.position ).normalize() );
     var intersects = ray.intersectObjects( walls );    
-
     if ( intersects.length > 0 ) {
-                
         intersects[0].object.shootFire(e);
-        
     }
 	
+}
+
+function onDocumentClicked(e) {
+	e.preventDefault();
+	mouse.x = (e.clientX / WIDTH) * 2 - 1;
+	mouse.y = - (e.clientY / HEIGHT) * 2 + 1;
+	
+	vector = new t.Vector3( 
+        ( e.clientX / window.innerWidth ) * 2 - 1, 
+        - ( e.clientY / window.innerHeight ) * 2 + 1, 
+        0.5 );
+        
+        // OK OK. Time to remove tooltip.
+        $('#'+TIP_ID).remove();
+	
+	projector.unprojectVector( vector, cam );
+    
+    var ray = new THREE.Ray( cam.position, 
+                             vector.subSelf( cam.position ).normalize() );
+    var intersects = ray.intersectObjects( walls );    
+    if ( intersects.length > 0 ) {
+		intersects[0].object.shootClickFire(e);
+    }
 }
 
 // Handle window resizing
@@ -384,11 +437,31 @@ APIRequest.loadCategories =  function(cb) {
 	$.ajax({
 		url: "http://mysma.gnstudio.biz/index.php?route=feed/web_api/categories&parent=0&level=2",
 		success: function(data) {
-			cb(data);
+			if (typeof data === 'string') {
+				cb($.parseJSON(data));
+			} else {
+				cb(data);
+			}
+			
 		},
 		error: function() {
 			console.log(arguments);
 		}
 	});
 }
-
+APIRequest.loadSubCategories = function(cb) {
+	$.ajax({
+		url: "http://mysma.gnstudio.biz/index.php?route=feed/web_api/categories&parent="+activeCat+"&level=2",
+		success: function(data) {
+			if (typeof data === 'string') {
+				cb($.parseJSON(data));
+			} else {
+				cb(data);
+			}
+			
+		},
+		error: function() {
+			console.log(arguments);
+		}
+	});
+}
