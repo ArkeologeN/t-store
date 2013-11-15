@@ -9,6 +9,7 @@
     for(var i = children.length-1;i>=0;i--){
         var child = children[i];
         child.clear();
+        child.remove();
        // this.removeChild(child);
     };
 };
@@ -148,22 +149,6 @@ function render() {
 			a.lastRandomZ = Math.random() * 2 - 1;
 		}
 		
-		/*
-		var c = getMapSector(a.position);
-		if (a.pathPos == a.path.length-1) {
-			console.log('finding new path for '+c.x+','+c.z);
-			a.pathPos = 1;
-			a.path = getAIpath(a);
-		}
-		var dest = a.path[a.pathPos], proportion = (c.z-dest[1])/(c.x-dest[0]);
-		a.translateX(aispeed * proportion);
-		a.translateZ(aispeed * 1-proportion);
-		console.log(c.x, c.z, dest[0], dest[1]);
-		if (c.x == dest[0] && c.z == dest[1]) {
-			console.log(c.x+','+c.z+' reached destination');
-			a.PathPos++;
-		}
-		*/
 		var cc = getMapSector(cam.position);
 		if (Date.now() > a.lastShot + 750 && distance(c.x, c.z, cc.x, cc.z) < 2) {
 			createBullet(a);
@@ -179,14 +164,6 @@ function render() {
 // Set up the objects in the world
 function setupScene(subCat, catId) {
 	var UNITSIZE = 250, units = mapW;
-	
-	/*
-	 * var roof = new t.Mesh(
-			new t.CubeGeometry(units / UNITSIZE, 10, units / UNITSIZE),
-			new t.MeshLambertMaterial({map: t.ImageUtils.loadTexture('images/textures/skybox/roof-tile-1.jpg')}));
-			
-	scene.add(roof);
-	*/
 
 	// Geometry: floor
 	var floor = new t.Mesh(
@@ -205,44 +182,8 @@ function setupScene(subCat, catId) {
 	 ];
 	 
 	 // If load subcategories;
-	 if (isSmallWorld === true) {
-		 // Yes
-		 APIRequest.loadSubCategories(function(data) {
-			 categories = data.categories;
-			 console.log(categories);
-			 window.__db.subCategories = categories;
-			if ( categories.length > 0) {
-				console.log("sdadasd");
-				for (var i = 0; i < categories.length; i++) {
-					for (var j = 0, m = map[i].length; j < m; j++) {
-						if (map[i][j]) {
-							var wall = new t.Mesh(cube, materials[map[i][j]-1])
-								, category = categories[i];
-								wall.name = category.name;
-								wall.ops = {id: category.category_id, name: category.name}
-							wall.position.x = (i - units/2) * UNITSIZE;
-							wall.position.y = WALLHEIGHT/2;
-							wall.position.z = (j - units/2) * UNITSIZE;
-							wall.shootFire = function(e) {
-								var div = $("<div />")
-								div.attr('id',TIP_ID);
-								div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
-								div.html(this.name)
-								$("body").append(div)
-							}
-							wall.shootClickFire = function(e) {
-								console.log(this.ops);
-							}
-							scene.add(wall);
-							walls.push(wall);
-						}
-					}
-				}
-			}
-		 });
-	 } else {
-		 // NO. Its categories world.
-		 APIRequest.loadCategories(function(data) {
+	 // NO. Its categories world.
+	 APIRequest.loadCategories(function(data) {
 			categories = data.categories;
 			window.__db.categories = categories;
 			if ( categories.length > 0) {
@@ -256,6 +197,7 @@ function setupScene(subCat, catId) {
 							wall.position.x = (i - units/2) * UNITSIZE;
 							wall.position.y = WALLHEIGHT/2;
 							wall.position.z = (j - units/2) * UNITSIZE;
+                                                        wall.is_wall = true;
 							wall.shootFire = function(e) {
 								var div = $("<div />")
 								div.attr('id',TIP_ID);
@@ -264,21 +206,20 @@ function setupScene(subCat, catId) {
 								$("body").append(div)
 							}
 							wall.shootClickFire = function(e) {
-								scene.clear();
 								isSmallWorld = true;
 								activeCat = this.ops.id;
 								init();
 								animate();
 								//render();
 							}
+                                                        wall.ops.has_small = true;
 							scene.add(wall);
 							walls.push(wall);
 						}
 					}
 				}
 			}
-		 });
-	 }	
+	 });	
 	
 	// Lighting
 	var directionalLight1 = new t.DirectionalLight( 0xF7EFBE, 0.7 );
@@ -287,6 +228,16 @@ function setupScene(subCat, catId) {
 	var directionalLight2 = new t.DirectionalLight( 0xF7EFBE, 0.8 );
 	directionalLight2.position.set( -0.5, -1, -0.5 );
 	scene.add( directionalLight2 );
+}
+
+function flushScene() {
+    var obj, i;
+    for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
+        obj = scene.children[ i ];
+        if ( obj.is_ob) {
+            scene.remove(obj);
+        }
+    }
 }
 
 var ai = [];
@@ -399,7 +350,11 @@ function onDocumentClicked(e) {
                              vector.subSelf( cam.position ).normalize() );
     var intersects = ray.intersectObjects( walls );    
     if ( intersects.length > 0 ) {
-		intersects[0].object.shootClickFire(e);
+        if (intersects[0].object.ops.has_small === true) {
+            intersects[0].object.shootClickFire(e);
+        } else {
+            console.log("Clicked with no flag!");
+        }
     }
 }
 
@@ -432,36 +387,4 @@ function getRandBetween(lo, hi) {
  return parseInt(Math.floor(Math.random()*(hi-lo+1))+lo, 10);
 }
 
-var APIRequest = {}
-APIRequest.loadCategories =  function(cb) {
-	$.ajax({
-		url: "http://mysma.gnstudio.biz/index.php?route=feed/web_api/categories&parent=0&level=2",
-		success: function(data) {
-			if (typeof data === 'string') {
-				cb($.parseJSON(data));
-			} else {
-				cb(data);
-			}
-			
-		},
-		error: function() {
-			console.log(arguments);
-		}
-	});
-}
-APIRequest.loadSubCategories = function(cb) {
-	$.ajax({
-		url: "http://mysma.gnstudio.biz/index.php?route=feed/web_api/categories&parent="+activeCat+"&level=2",
-		success: function(data) {
-			if (typeof data === 'string') {
-				cb($.parseJSON(data));
-			} else {
-				cb(data);
-			}
-			
-		},
-		error: function() {
-			console.log(arguments);
-		}
-	});
-}
+
