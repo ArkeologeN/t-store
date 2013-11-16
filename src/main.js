@@ -6,7 +6,7 @@
  
 
 // 12 walls are hard-coded based upon no. of categories via API. (for now)
-var map = [ // 1  2  3  4  5  6  7  8  9
+/* // 1  2  3  4  5  6  7  8  9
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
            [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
            [1, 1, 0, 0, 2, 0, 0, 0, 0, 1,], // 2
@@ -19,7 +19,9 @@ var map = [ // 1  2  3  4  5  6  7  8  9
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
            [1, 1, 1, 0, 1, 1, 1, 1, 1, 1,], // 10
            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
-           ], mapW = map.length, mapH = map[0].length;
+*/
+var map = [
+           ], mapW = map.length, mapH = 0;
 
 // Semi-constants
 var WIDTH = window.innerWidth,
@@ -48,14 +50,14 @@ window.__db = window.__db || {};
 
 // Initialize and run on document ready
 $(document).ready(function() {
-	$('body').append('<div id="intro">Welcome to MySMA Mart!</div>');
-	$('#intro').css({width: WIDTH, height: HEIGHT}).one('click', function(e) {
-		e.preventDefault();
-		$(this).fadeOut();
-		init();
-		
-		animate();
-	});
+    $('body').append('<div id="intro">Welcome to MySMA Mart!</div>');
+    $('#intro').css({width: WIDTH, height: HEIGHT}).one('click', function(e) {
+        e.preventDefault();
+        $(this).fadeOut();
+        init();
+
+        animate();
+    });
 });
 
 // Setup
@@ -68,6 +70,7 @@ function init() {
 	// Set up camera
 	cam = new t.PerspectiveCamera(60, ASPECT, 1, 10000); // FOV, aspect, near, far
 	cam.position.y = UNITSIZE * .2;
+        cam.position.z = 0;
 	scene.add(cam);
 	
 	// Camera moves with mouse, flies around with WASD/arrow keys
@@ -116,40 +119,38 @@ function animate() {
 
 // Update and display
 function render() {
-	var delta = clock.getDelta(), speed = delta * BULLETMOVESPEED;
-	var aispeed = delta * MOVESPEED;
-	controls.update(delta); // Move camera
-	
+    var delta = clock.getDelta(), speed = delta * BULLETMOVESPEED;
+    var aispeed = delta * MOVESPEED;
+    controls.update(delta); // Move camera
 
-	// Update AI.
-	for (var i = ai.length-1; i >= 0; i--) {
-		var a = ai[i];
-		// Move AI
-		var r = Math.random();
-		if (r > 0.995) {
-			a.lastRandomX = Math.random() * 2 - 1;
-			a.lastRandomZ = Math.random() * 2 - 1;
-		}
-		a.translateX(aispeed * a.lastRandomX);
-		a.translateZ(aispeed * a.lastRandomZ);
-		var c = getMapSector(a.position);
-		if (c.x < 0 || c.x >= mapW || c.y < 0 || c.y >= mapH || checkWallCollision(a.position)) {
-			a.translateX(-2 * aispeed * a.lastRandomX);
-			a.translateZ(-2 * aispeed * a.lastRandomZ);
-			a.lastRandomX = Math.random() * 2 - 1;
-			a.lastRandomZ = Math.random() * 2 - 1;
-		}
-		
-		var cc = getMapSector(cam.position);
-		if (Date.now() > a.lastShot + 750 && distance(c.x, c.z, cc.x, cc.z) < 2) {
-			createBullet(a);
-			a.lastShot = Date.now();
-		}
-	}
 
-	renderer.render(scene, cam); // Repaint
-	
-	
+    // Update AI.
+    for (var i = ai.length-1; i >= 0; i--) {
+            var a = ai[i];
+            // Move AI
+            var r = Math.random();
+            if (r > 0.995) {
+                    a.lastRandomX = Math.random() * 2 - 1;
+                    a.lastRandomZ = Math.random() * 2 - 1;
+            }
+            a.translateX(aispeed * a.lastRandomX);
+            a.translateZ(aispeed * a.lastRandomZ);
+            var c = getMapSector(a.position);
+            if (c.x < 0 || c.x >= mapW || c.y < 0 || c.y >= mapH || checkWallCollision(a.position)) {
+                    a.translateX(-2 * aispeed * a.lastRandomX);
+                    a.translateZ(-2 * aispeed * a.lastRandomZ);
+                    a.lastRandomX = Math.random() * 2 - 1;
+                    a.lastRandomZ = Math.random() * 2 - 1;
+            }
+
+            var cc = getMapSector(cam.position);
+            if (Date.now() > a.lastShot + 750 && distance(c.x, c.z, cc.x, cc.z) < 2) {
+                    createBullet(a);
+                    a.lastShot = Date.now();
+            }
+    }
+
+    renderer.render(scene, cam); // Repaint
 }
 
 // Set up the objects in the world
@@ -177,6 +178,7 @@ function setupScene(subCat, catId) {
 	 APIRequest.loadCategories(function(data) {
             categories = data.categories;
             window.__db.categories = categories;
+            buildMap(categories.length);
             if ( categories.length > 0) {
                 for (var i = 0; i < categories.length; i++) {
                     for (var j = 0, m = map[i].length; j < m; j++) {
@@ -197,38 +199,18 @@ function setupScene(subCat, catId) {
                                     $("body").append(div)
                             }
                             wall.shootClickFire = function(e) {
-                                    isSmallWorld = true;
-                                    activeCat = this.ops.id;
-                                    console.log("Load sub-categories!");
-                                    APIRequest.loadSubCategories(function(data) {
-                                        if ( data.success === true ) {
-                                            flushScene();
-                                            console.log(data.categories, data.categories.length);
-                                            //scene.clear();
-                                            map = [ // 1  2  3  4  5  6  7  8  9
-                                                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
-                                                    [1, 1, 0, 2, 0, 0, 0, 1, 1, 1,], // 1
-                                                    [1, 1, 0, 1, 2, 0, 0, 0, 0, 1,], // 2
-                                                    [1, 0, 0, 0, 0, 2, 0, 2, 0, 1,], // 3
-                                                    [2, 0, 0, 2, 0, 0, 1, 2, 0, 1,], // 4
-                                                    [1, 0, 0, 0, 2, 0, 0, 0, 1, 1,], // 5
-                                                    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1,], // 6
-                                                    [1, 1, 1, 0, 0, 1, 0, 0, 1, 1,], // 7
-                                                    [1, 1, 1, 1, 1, 1, 0, 0, 1, 1,], // 8
-                                                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
-                                                    [1, 1, 2, 0, 1, 1, 1, 1, 1, 1,], // 10
-                                                    [1, 1, 1, 1, 1, 1, 0, 1, 1, 2,], // 11
-                                                    ]
-                                            scene.updateMatrixWorld()
-                                            init();
-                                            animate();
-                                            console.log(scene);
-                                        }
-                                    });
-                                    //return false;
-                                    init();
-                                    animate();
-                                    //render();
+                                isSmallWorld = true;
+                                activeCat = this.ops.id;
+                                console.log("Load sub-categories!");
+                                APIRequest.loadSubCategories(function(data) {
+                                    if ( data.success === true ) {
+                                        flushScene();
+                                        walls = [];
+                                        scene.updateMatrixWorld();
+                                        // Re-paint the world.
+                                        render();
+                                    }
+                                });
                             }
                             wall.ops.has_small = true;
                             scene.add(wall);
@@ -248,6 +230,54 @@ function setupScene(subCat, catId) {
 	scene.add( directionalLight2 );
 }
 
+/**
+ * Takes the length of no. of walls to be drawn.
+ * @param {type} l
+ * @returns void
+ */
+function buildMap(l) {
+    var k, j = 1;
+    for (k = 1; k <= l; k++) {
+        // Iterated. Lets build the map.
+        
+        /*
+         * while (j <= 10) {
+            set.push(getRandBetween(0,1));
+            j++;
+        }
+         */
+//        set.push(1);
+        map.push([
+            1,// 0
+            getRandBetween(0,1),// 1
+            getRandBetween(0,1),// 2
+            getRandBetween(0,2),// 3
+            getRandBetween(0,2),// 4
+            getRandBetween(0,2),// 5
+            getRandBetween(0,2),// 6
+            getRandBetween(0,1),// 7
+            getRandBetween(0,1),// 8
+            getRandBetween(0,1),// 9
+        ]);
+    }
+    /*      // 1  2  3  4  5  6  7  8  9
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
+           [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
+           [1, 1, 0, 0, 2, 0, 0, 0, 0, 1,], // 2
+           [1, 0, 0, 0, 0, 2, 0, 0, 0, 1,], // 3
+           [1, 0, 0, 2, 0, 0, 2, 0, 0, 1,], // 4
+           [1, 0, 0, 0, 2, 0, 0, 0, 1, 1,], // 5
+           [1, 1, 1, 0, 0, 0, 0, 1, 1, 1,], // 6
+           [1, 1, 1, 0, 0, 1, 0, 0, 1, 1,], // 7
+           [1, 1, 1, 1, 1, 1, 0, 0, 1, 1,], // 8
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
+           [1, 1, 1, 0, 1, 1, 1, 1, 1, 1,], // 10
+           [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
+    */
+    
+    mapW = map.length, mapH = map[0].length;
+}
+
 function flushScene() {
     var obj, i;
     for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
@@ -258,9 +288,6 @@ function flushScene() {
             scene.children.splice(i,1);
         }
     }
-    
-    console.log('Final:',scene.children.length);
-    console.log('Final:',scene.children);
 }
 
 var ai = [];
