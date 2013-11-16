@@ -21,7 +21,7 @@
            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
 */
 var map = [
-           ], mapW = map.length, mapH = 0;
+    ], mapW = map.length, mapH = 0;
 
 // Semi-constants
 var WIDTH = window.innerWidth,
@@ -42,7 +42,8 @@ var scene, cam,
 		renderer, controls, clock, 
 		projector, model, skin, 
 		vector, categories, category,
-		isSmallWorld = false, activeCat = null;
+		isSmallWorld = false, activeCat = null,
+                cube, materials, units;
 var runAnim = true, mouse = { x: 0, y: 0 }, walls = [];
 
 // DOM db.
@@ -55,7 +56,6 @@ $(document).ready(function() {
         e.preventDefault();
         $(this).fadeOut();
         init();
-
         animate();
     });
 });
@@ -70,7 +70,6 @@ function init() {
 	// Set up camera
 	cam = new t.PerspectiveCamera(60, ASPECT, 1, 10000); // FOV, aspect, near, far
 	cam.position.y = UNITSIZE * .2;
-        cam.position.z = 0;
 	scene.add(cam);
 	
 	// Camera moves with mouse, flies around with WASD/arrow keys
@@ -123,7 +122,6 @@ function render() {
     var aispeed = delta * MOVESPEED;
     controls.update(delta); // Move camera
 
-
     // Update AI.
     for (var i = ai.length-1; i >= 0; i--) {
             var a = ai[i];
@@ -155,7 +153,8 @@ function render() {
 
 // Set up the objects in the world
 function setupScene(subCat, catId) {
-	var UNITSIZE = 250, units = mapW;
+	var UNITSIZE = 250;
+        units = mapW;
 
 	// Geometry: floor
 	var floor = new t.Mesh(
@@ -166,8 +165,8 @@ function setupScene(subCat, catId) {
 	scene.add(floor);
 	
 	// Geometry: walls
-	var cube = new t.CubeGeometry(UNITSIZE, WALLHEIGHT, UNITSIZE);
-	var materials = [
+	cube = new t.CubeGeometry(UNITSIZE, WALLHEIGHT, UNITSIZE);
+	materials = [
 		 new t.MeshLambertMaterial({/*color: 0x00CCAA,*/map: t.ImageUtils.loadTexture('images/shelf.png')}),
 		 new t.MeshLambertMaterial({/*color: 0xC5EDA0,*/map: t.ImageUtils.loadTexture('images/shelf-2.png')}),
 		 new t.MeshLambertMaterial({color: 0xFBEBCD}),
@@ -178,47 +177,8 @@ function setupScene(subCat, catId) {
 	 APIRequest.loadCategories(function(data) {
             categories = data.categories;
             window.__db.categories = categories;
-            buildMap(categories.length);
-            if ( categories.length > 0) {
-                for (var i = 0; i < categories.length; i++) {
-                    for (var j = 0, m = map[i].length; j < m; j++) {
-                        if (map[i][j]) {
-                            var wall = new t.Mesh(cube, materials[map[i][j]-1])
-                                    , category = categories[i];
-                                    wall.name = category.name;
-                                    wall.ops = {id: category.category_id, name: category.name}
-                            wall.position.x = (i - units/2) * UNITSIZE;
-                            wall.position.y = WALLHEIGHT/2;
-                            wall.position.z = (j - units/2) * UNITSIZE;
-                            wall.is_wall = true;
-                            wall.shootFire = function(e) {
-                                    var div = $("<div />")
-                                    div.attr('id',TIP_ID);
-                                    div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
-                                    div.html(this.name)
-                                    $("body").append(div)
-                            }
-                            wall.shootClickFire = function(e) {
-                                isSmallWorld = true;
-                                activeCat = this.ops.id;
-                                console.log("Load sub-categories!");
-                                APIRequest.loadSubCategories(function(data) {
-                                    if ( data.success === true ) {
-                                        flushScene();
-                                        walls = [];
-                                        scene.updateMatrixWorld();
-                                        // Re-paint the world.
-                                        render();
-                                    }
-                                });
-                            }
-                            wall.ops.has_small = true;
-                            scene.add(wall);
-                            walls.push(wall);
-                        }
-                    }
-                }
-            }
+            buildMap(categories.length, categories);
+            
 	 });	
 	
 	// Lighting
@@ -235,18 +195,9 @@ function setupScene(subCat, catId) {
  * @param {type} l
  * @returns void
  */
-function buildMap(l) {
+function buildMap(l, categories, is_sub) {
     var k, j = 1;
     for (k = 1; k <= l; k++) {
-        // Iterated. Lets build the map.
-        
-        /*
-         * while (j <= 10) {
-            set.push(getRandBetween(0,1));
-            j++;
-        }
-         */
-//        set.push(1);
         map.push([
             1,// 0
             getRandBetween(0,1),// 1
@@ -260,6 +211,53 @@ function buildMap(l) {
             getRandBetween(0,1),// 9
         ]);
     }
+    
+    if ( categories.length > 0) {
+    for (var i = 0; i < categories.length; i++) {
+        for (var j = 0, m = map[i].length; j < m; j++) {
+            if (map[i][j]) {
+                var wall = new t.Mesh(cube, materials[map[i][j]-1])
+                        , category = categories[i];
+                        wall.name = category.name;
+                        wall.ops = {id: category.category_id, name: category.name}
+                wall.position.x = (i - units/2) * UNITSIZE;
+                wall.position.y = WALLHEIGHT/2;
+                wall.position.z = (j - units/2) * UNITSIZE;
+                wall.is_wall = true;
+                wall.shootFire = function(e) {
+                        var div = $("<div />")
+                        div.attr('id',TIP_ID);
+                        div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
+                        div.html(this.name)
+                        $("body").append(div)
+                }
+                wall.shootClickFire = function(e) {
+                    isSmallWorld = true;
+                    activeCat = this.ops.id;
+                    console.log("Load sub-categories!");
+                    APIRequest.loadSubCategories(function(data) {
+                        if ( data.success === true ) {
+
+                            APIRequest.loadSubCategories(function(subcat) {
+                                flushScene();
+                                walls = [];
+                                scene.updateMatrixWorld();
+                                // Re-paint the world.
+                                    buildMap(subcat.categories.length, subcat.categories, true);
+                                console.log(subcat);
+                                render();
+                            });
+                            
+                        }
+                    });
+                }
+                wall.ops.has_small = is_sub === true ? false : true;
+                scene.add(wall);
+                walls.push(wall);
+            }
+        }
+    }
+}
     /*      // 1  2  3  4  5  6  7  8  9
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
            [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
@@ -274,8 +272,10 @@ function buildMap(l) {
            [1, 1, 1, 0, 1, 1, 1, 1, 1, 1,], // 10
            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
     */
+   
     
     mapW = map.length, mapH = map[0].length;
+    scene.updateMatrixWorld();
 }
 
 function flushScene() {
@@ -353,9 +353,6 @@ function checkWallCollision(v) {
 }
 
 
-var bullets = [];
-var sphereMaterial = new t.MeshBasicMaterial({color: 0x333333});
-var sphereGeo = new t.SphereGeometry(2, 6, 6);
 
 function onDocumentMouseMove(e) {
 	e.preventDefault();
