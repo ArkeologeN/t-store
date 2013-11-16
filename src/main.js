@@ -205,11 +205,27 @@ function setupScene(subCat, catId) {
                                             flushScene();
                                             console.log(data.categories, data.categories.length);
                                             //scene.clear();
-                                            render();
+                                            map = [ // 1  2  3  4  5  6  7  8  9
+                                                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
+                                                    [1, 1, 0, 2, 0, 0, 0, 1, 1, 1,], // 1
+                                                    [1, 1, 0, 1, 2, 0, 0, 0, 0, 1,], // 2
+                                                    [1, 0, 0, 0, 0, 2, 0, 2, 0, 1,], // 3
+                                                    [2, 0, 0, 2, 0, 0, 1, 2, 0, 1,], // 4
+                                                    [1, 0, 0, 0, 2, 0, 0, 0, 1, 1,], // 5
+                                                    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1,], // 6
+                                                    [1, 1, 1, 0, 0, 1, 0, 0, 1, 1,], // 7
+                                                    [1, 1, 1, 1, 1, 1, 0, 0, 1, 1,], // 8
+                                                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
+                                                    [1, 1, 2, 0, 1, 1, 1, 1, 1, 1,], // 10
+                                                    [1, 1, 1, 1, 1, 1, 0, 1, 1, 2,], // 11
+                                                    ]
+                                            scene.updateMatrixWorld()
+                                            init();
+                                            animate();
                                             console.log(scene);
                                         }
                                     });
-                                    return false;
+                                    //return false;
                                     init();
                                     animate();
                                     //render();
@@ -238,10 +254,13 @@ function flushScene() {
         obj = scene.children[ i ];
         if ( obj.is_wall === true) {
             scene.remove(obj);
-            delete scene.children[ i ];
-            scene.updateMatrixWorld();
+            obj.remove();
+            scene.children.splice(i,1);
         }
     }
+    
+    console.log('Final:',scene.children.length);
+    console.log('Final:',scene.children);
 }
 
 var ai = [];
