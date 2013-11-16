@@ -4,15 +4,6 @@
  *   is vertical
  */
  
- THREE.Object3D.prototype.clear = function(){
-    var children = this.children;
-    for(var i = children.length-1;i>=0;i--){
-        var child = children[i];
-        child.clear();
-        child.remove();
-       // this.removeChild(child);
-    };
-};
 
 // 12 walls are hard-coded based upon no. of categories via API. (for now)
 var map = [ // 1  2  3  4  5  6  7  8  9
@@ -184,41 +175,52 @@ function setupScene(subCat, catId) {
 	 // If load subcategories;
 	 // NO. Its categories world.
 	 APIRequest.loadCategories(function(data) {
-			categories = data.categories;
-			window.__db.categories = categories;
-			if ( categories.length > 0) {
-				for (var i = 0; i < categories.length; i++) {
-					for (var j = 0, m = map[i].length; j < m; j++) {
-						if (map[i][j]) {
-							var wall = new t.Mesh(cube, materials[map[i][j]-1])
-								, category = categories[i];
-								wall.name = category.name;
-								wall.ops = {id: category.category_id, name: category.name}
-							wall.position.x = (i - units/2) * UNITSIZE;
-							wall.position.y = WALLHEIGHT/2;
-							wall.position.z = (j - units/2) * UNITSIZE;
-                                                        wall.is_wall = true;
-							wall.shootFire = function(e) {
-								var div = $("<div />")
-								div.attr('id',TIP_ID);
-								div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
-								div.html(this.name)
-								$("body").append(div)
-							}
-							wall.shootClickFire = function(e) {
-								isSmallWorld = true;
-								activeCat = this.ops.id;
-								init();
-								animate();
-								//render();
-							}
-                                                        wall.ops.has_small = true;
-							scene.add(wall);
-							walls.push(wall);
-						}
-					}
-				}
-			}
+            categories = data.categories;
+            window.__db.categories = categories;
+            if ( categories.length > 0) {
+                for (var i = 0; i < categories.length; i++) {
+                    for (var j = 0, m = map[i].length; j < m; j++) {
+                        if (map[i][j]) {
+                            var wall = new t.Mesh(cube, materials[map[i][j]-1])
+                                    , category = categories[i];
+                                    wall.name = category.name;
+                                    wall.ops = {id: category.category_id, name: category.name}
+                            wall.position.x = (i - units/2) * UNITSIZE;
+                            wall.position.y = WALLHEIGHT/2;
+                            wall.position.z = (j - units/2) * UNITSIZE;
+                            wall.is_wall = true;
+                            wall.shootFire = function(e) {
+                                    var div = $("<div />")
+                                    div.attr('id',TIP_ID);
+                                    div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
+                                    div.html(this.name)
+                                    $("body").append(div)
+                            }
+                            wall.shootClickFire = function(e) {
+                                    isSmallWorld = true;
+                                    activeCat = this.ops.id;
+                                    console.log("Load sub-categories!");
+                                    APIRequest.loadSubCategories(function(data) {
+                                        if ( data.success === true ) {
+                                            flushScene();
+                                            console.log(data.categories, data.categories.length);
+                                            //scene.clear();
+                                            render();
+                                            console.log(scene);
+                                        }
+                                    });
+                                    return false;
+                                    init();
+                                    animate();
+                                    //render();
+                            }
+                            wall.ops.has_small = true;
+                            scene.add(wall);
+                            walls.push(wall);
+                        }
+                    }
+                }
+            }
 	 });	
 	
 	// Lighting
@@ -234,8 +236,10 @@ function flushScene() {
     var obj, i;
     for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
         obj = scene.children[ i ];
-        if ( obj.is_ob) {
+        if ( obj.is_wall === true) {
             scene.remove(obj);
+            delete scene.children[ i ];
+            scene.updateMatrixWorld();
         }
     }
 }
