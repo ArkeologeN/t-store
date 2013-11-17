@@ -21,6 +21,19 @@
            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
 */
 var map = [
+    // 1  2  3  4  5  6  7  8  9
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
+           [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
+           [1, 1, 0, 0, 2, 0, 0, 0, 0, 1,], // 2
+           [1, 0, 0, 0, 0, 2, 0, 0, 0, 1,], // 3
+           [1, 0, 0, 2, 0, 0, 2, 0, 0, 1,], // 4
+           [1, 0, 0, 0, 2, 0, 0, 0, 1, 1,], // 5
+           [1, 1, 1, 0, 0, 0, 0, 1, 1, 1,], // 6
+           [1, 1, 1, 0, 0, 1, 0, 0, 1, 1,], // 7
+           [1, 1, 1, 1, 1, 1, 0, 0, 1, 1,], // 8
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
+           [1, 1, 1, 0, 1, 1, 1, 1, 1, 1,], // 10
+           [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
     ], mapW = map.length, mapH = 0;
 
 // Semi-constants
@@ -39,11 +52,11 @@ var WIDTH = window.innerWidth,
 // Global vars
 var t = THREE;
 var scene, cam, 
-		renderer, controls, clock, 
-		projector, model, skin, 
-		vector, categories, category,
-		isSmallWorld = false, activeCat = null,
-                cube, materials, units;
+    renderer, controls, clock, 
+    projector, model, skin, 
+    vector, categories, category,
+    isSmallWorld = false, activeCat = null,
+    cube, materials, units;
 var runAnim = true, mouse = { x: 0, y: 0 }, walls = [];
 
 // DOM db.
@@ -197,7 +210,8 @@ function setupScene(subCat, catId) {
  */
 function buildMap(l, categories, is_sub) {
     var k, j = 1;
-    for (k = 1; k <= l; k++) {
+    /*
+     * for (k = 1; k <= l; k++) {
         map.push([
             1,// 0
             getRandBetween(0,1),// 1
@@ -211,53 +225,75 @@ function buildMap(l, categories, is_sub) {
             getRandBetween(0,1),// 9
         ]);
     }
+     */
     
     if ( categories.length > 0) {
-    for (var i = 0; i < categories.length; i++) {
-        for (var j = 0, m = map[i].length; j < m; j++) {
-            if (map[i][j]) {
-                var wall = new t.Mesh(cube, materials[map[i][j]-1])
-                        , category = categories[i];
-                        wall.name = category.name;
-                        wall.ops = {id: category.category_id, name: category.name}
-                wall.position.x = (i - units/2) * UNITSIZE;
-                wall.position.y = WALLHEIGHT/2;
-                wall.position.z = (j - units/2) * UNITSIZE;
-                wall.is_wall = true;
-                wall.shootFire = function(e) {
-                        var div = $("<div />")
-                        div.attr('id',TIP_ID);
-                        div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
-                        div.html(this.name)
-                        $("body").append(div)
-                }
-                wall.shootClickFire = function(e) {
-                    isSmallWorld = true;
-                    activeCat = this.ops.id;
-                    console.log("Load sub-categories!");
-                    APIRequest.loadSubCategories(function(data) {
-                        if ( data.success === true ) {
-
-                            APIRequest.loadSubCategories(function(subcat) {
-                                flushScene();
-                                walls = [];
-                                scene.updateMatrixWorld();
-                                // Re-paint the world.
-                                    buildMap(subcat.categories.length, subcat.categories, true);
-                                console.log(subcat);
-                                render();
-                            });
+        for (var i = 0; i < categories.length; i++) {
+            for (var j = 0, m = map[i].length; j < m; j++) {
+                if (map[i][j]) {
+                    var wall = new t.Mesh(cube, materials[map[i][j]-1])
+                            , category = categories[i];
+                            wall.name = category.name;
+                            wall.ops = {id: category.category_id, name: category.name}
+                    wall.position.x = (i - units/2) * UNITSIZE;
+                    wall.position.y = WALLHEIGHT/2;
+                    wall.position.z = (j - units/2) * UNITSIZE;
+                    wall.is_wall = true;
+                    wall.shootFire = function(e) {
+                            var div = $("<div />")
+                            div.attr('id',TIP_ID);
+                            div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
+                            div.html(this.name);
                             
+                            $("body").append(div)
+                    }
+                    wall.initSubCategoriesWorld = function(e) {
+                        isSmallWorld = true;
+                        activeCat = this.ops.id;
+                        console.log("Load sub-categories!");
+                        APIRequest.loadSubCategories(function(data) {
+                            if ( data.success === true ) {
+
+                                APIRequest.loadSubCategories(function(subcat) {
+                                    flushScene();
+                                    walls = [];
+                                    scene.updateMatrixWorld();
+                                    // Re-paint the world.
+                                    buildMap(subcat.categories.length, subcat.categories, true);
+                                    render();
+                                });
+
+                            }
+                        });
+                    };
+
+                    if ( is_sub === true ) {
+                        wall.initProductsOnShelf = function(evt, o) {
+                            var p_cube = new t.CubeGeometry(100, 100 / 3, 100);
+                            var product = new t.Mesh(
+                                    p_cube, 
+                                    new t.MeshLambertMaterial({/*color: 0x00CCAA,*/map: t.ImageUtils.loadTexture('images/box_100x100.png')})
+                                );
+                                    
+                            //product.position.x = (evt.clientX / WIDTH) * 2 - 1;
+                            //product.position.y = (evt.clientY / HEIGHT) * 2 + 1;
+                            //product.position.z = (j - units/2) * 100;
+                            product.position.x = evt.pageX + 20;
+                            product.position.y = evt.pageY;
+                            // add product on shelf.
+                            o.add(product);
+                            scene.updateMatrixWorld();
+                            render();
+                            console.log(evt);
                         }
-                    });
+                    }
+                    wall.ops.has_small = is_sub === true ? false : true;
+                    scene.add(wall);
+                    walls.push(wall);
                 }
-                wall.ops.has_small = is_sub === true ? false : true;
-                scene.add(wall);
-                walls.push(wall);
-            }
         }
     }
-}
+    }
     /*      // 1  2  3  4  5  6  7  8  9
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
            [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
@@ -291,20 +327,7 @@ function flushScene() {
 }
 
 var ai = [];
-var aiGeo = new t.CubeGeometry(40, 40, 40);
 
-
-function getAIpath(a) {
-	var p = getMapSector(a.position);
-	do { // Cop-out
-		do {
-			var x = getRandBetween(0, mapW-1);
-			var z = getRandBetween(0, mapH-1);
-		} while (map[x][z] > 0 || distance(p.x, p.z, x, z) < 3);
-		var path = findAIpath(p.x, p.z, x, z);
-	} while (path.length == 0);
-	return path;
-}
 
 /**
  * Find a path from one grid cell to another.
@@ -321,12 +344,6 @@ function getAIpath(a) {
  *   An array of coordinates including the start and end positions representing
  *   the path from the starting cell to the ending cell.
  */
-function findAIpath(sX, sZ, eX, eZ) {
-	var backupGrid = grid.clone();
-	var path = finder.findPath(sX, sZ, eX, eZ, grid);
-	grid = backupGrid;
-	return path;
-}
 
 function distance(x1, y1, x2, y2) {
 	return Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
@@ -398,9 +415,11 @@ function onDocumentClicked(e) {
     var intersects = ray.intersectObjects( walls );    
     if ( intersects.length > 0 ) {
         if (intersects[0].object.ops.has_small === true) {
-            intersects[0].object.shootClickFire(e);
+            // We're in parent world. Load the sub-categories world.
+            intersects[0].object.initSubCategoriesWorld(e);
         } else {
-            console.log("Clicked with no flag!");
+            // We're in sub-categories world. Load products on shelf.
+            intersects[0].object.initProductsOnShelf(e, intersects[0].object);
         }
     }
 }
