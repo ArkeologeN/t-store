@@ -58,7 +58,8 @@ var scene, cam,
     isSmallWorld = false, activeCat = null,
     cube, materials, units;
 var runAnim = true, mouse = { x: 0, y: 0 }, walls = [];
-
+var spinner = Spin();
+spinner.init('spinner');
 // DOM db.
 window.__db = window.__db || {};
 
@@ -184,16 +185,16 @@ function setupScene(subCat, catId) {
 		 new t.MeshLambertMaterial({/*color: 0xC5EDA0,*/map: t.ImageUtils.loadTexture('images/shelf-2.png')}),
 		 new t.MeshLambertMaterial({color: 0xFBEBCD}),
 	 ];
-	 
+	 spinner.start();
 	 // If load subcategories;
 	 // NO. Its categories world.
 	 APIRequest.loadCategories(function(data) {
             categories = data.categories;
             window.__db.categories = categories;
             buildMap(categories.length, categories);
-            
+            spinner.stop();
 	 });	
-	
+         
 	// Lighting
 	var directionalLight1 = new t.DirectionalLight( 0xF7EFBE, 0.7 );
 	directionalLight1.position.set( 0.5, 1, 0.5 );
@@ -269,22 +270,36 @@ function buildMap(l, categories, is_sub) {
 
                     if ( is_sub === true ) {
                         wall.initProductsOnShelf = function(evt, o) {
-                            var p_cube = new t.CubeGeometry(100, 100 / 3, 100);
-                            var product = new t.Mesh(
-                                    p_cube, 
-                                    new t.MeshLambertMaterial({/*color: 0x00CCAA,*/map: t.ImageUtils.loadTexture('images/box_100x100.png')})
-                                );
-                                    
-                            //product.position.x = (evt.clientX / WIDTH) * 2 - 1;
-                            //product.position.y = (evt.clientY / HEIGHT) * 2 + 1;
-                            //product.position.z = (j - units/2) * 100;
-                            product.position.x = evt.pageX + 20;
-                            product.position.y = evt.pageY;
-                            // add product on shelf.
-                            o.add(product);
-                            scene.updateMatrixWorld();
-                            render();
-                            console.log(evt);
+                            // Put the products in shelf here.
+                            APIRequest.loadProducts(o.ops.id, function(data) {
+                                if ( data.success === true ) {
+                                    // Products found.
+                                    for (var n = 1; n <= data.products.length; n++) {
+                                        // Iterate n products. Put them in shelf respectively..
+                                        /*
+                                        * var p_cube = new t.CubeGeometry(50, 50 / 3, 50);
+                                       var product = new t.Mesh(
+                                               p_cube, 
+                                               new t.MeshLambertMaterial({map: t.ImageUtils.loadTexture('images/box_100x100.png')})
+                                           );
+
+                                       product.position.x = (evt.clientX / WIDTH) * 2 - 1;
+                                       //product.position.y = (evt.clientY / HEIGHT) * 2 + 1;
+                                       //product.position.z = (j - units/2) * 100;
+                                       product.position.x = (evt.pageX / j) - 20;
+                                       product.position.y = evt.pageY / 2;
+                                       // add product on shelf.
+                                       o.add(product);
+                                       scene.updateMatrixWorld();
+                                       render();
+                                       console.log(evt);
+                                        */
+                                    }
+                                } else {
+                                    // Failed Loading Products.
+                                }
+                            });
+                            
                         }
                     }
                     wall.ops.has_small = is_sub === true ? false : true;
