@@ -59,7 +59,7 @@ var scene, cam,
     cube, materials, units;
 var runAnim = true, mouse = { x: 0, y: 0 }, walls = [];
 var spinner = Spin();
-spinner.init('spinner');
+
 // DOM db.
 window.__db = window.__db || {};
 
@@ -69,6 +69,8 @@ $(document).ready(function() {
     $('#intro').css({width: WIDTH, height: HEIGHT}).one('click', function(e) {
         e.preventDefault();
         $(this).fadeOut();
+        spinner.init('spinner');
+        spinner.start();
         init();
         animate();
     });
@@ -166,7 +168,7 @@ function render() {
 }
 
 // Set up the objects in the world
-function setupScene(subCat, catId) {
+function setupScene() {
 	var UNITSIZE = 250;
         units = mapW;
 
@@ -184,7 +186,7 @@ function setupScene(subCat, catId) {
 		 new t.MeshLambertMaterial({/*color: 0x00CCAA,*/map: t.ImageUtils.loadTexture('images/shelf.png')}),
 		 new t.MeshLambertMaterial({/*color: 0xC5EDA0,*/map: t.ImageUtils.loadTexture('images/shelf-2.png')}),
 		 new t.MeshLambertMaterial({color: 0xFBEBCD}),
-	 ];
+	 ]
 	 spinner.start();
 	 // If load subcategories;
 	 // NO. Its categories world.
@@ -193,7 +195,7 @@ function setupScene(subCat, catId) {
             window.__db.categories = categories;
             buildMap(categories.length, categories);
             spinner.stop();
-	 });	
+	 });
          
 	// Lighting
 	var directionalLight1 = new t.DirectionalLight( 0xF7EFBE, 0.7 );
@@ -251,18 +253,16 @@ function buildMap(l, categories, is_sub) {
                     wall.initSubCategoriesWorld = function(e) {
                         isSmallWorld = true;
                         activeCat = this.ops.id;
-                        console.log("Load sub-categories!");
-                        APIRequest.loadSubCategories(function(data) {
-                            if ( data.success === true ) {
-
-                                APIRequest.loadSubCategories(function(subcat) {
-                                    flushScene();
-                                    walls = [];
-                                    scene.updateMatrixWorld();
-                                    // Re-paint the world.
-                                    buildMap(subcat.categories.length, subcat.categories, true);
-                                    render();
-                                });
+                        spinner.start();
+                        APIRequest.loadSubCategories(function(subcat) {
+                            if ( subcat.success === true ) {
+                                flushScene();
+                                walls = [];
+                                scene.updateMatrixWorld();
+                                // Re-paint the world.
+                                buildMap(subcat.categories.length, subcat.categories, true);
+                                render();
+                                spinner.stop();
 
                             }
                         });
@@ -271,7 +271,10 @@ function buildMap(l, categories, is_sub) {
                     if ( is_sub === true ) {
                         wall.initProductsOnShelf = function(evt, o) {
                             // Put the products in shelf here.
+                            spinner.start();
+                            console.log('loader start');
                             APIRequest.loadProducts(o.ops.id, function(data) {
+                                spinner.stop();
                                 if ( data.success === true ) {
                                     // Products found.
                                     for (var n = 1; n <= data.products.length; n++) {
@@ -299,7 +302,6 @@ function buildMap(l, categories, is_sub) {
                                     // Failed Loading Products.
                                 }
                             });
-                            
                         }
                     }
                     wall.ops.has_small = is_sub === true ? false : true;

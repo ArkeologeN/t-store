@@ -24,6 +24,7 @@ var Spin = (function() {
         target = document.getElementById(t);
         spinner = new Spinner(opts);
     }
+    
     function start() {
         spinner.spin(target);
     }
