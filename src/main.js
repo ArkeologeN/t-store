@@ -21,9 +21,9 @@
            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
 */
 var map = [
-    // 1  2  3  4  5  6  7  8  9
+         // 1  2  3  4  5  6  7  8  9  10
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
-           [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
+           [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1 
            [1, 1, 0, 0, 2, 0, 0, 0, 0, 1,], // 2
            [1, 0, 0, 0, 0, 2, 0, 0, 0, 1,], // 3
            [1, 0, 0, 2, 0, 0, 2, 0, 0, 1,], // 4
@@ -34,7 +34,7 @@ var map = [
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
            [1, 1, 1, 0, 1, 1, 1, 1, 1, 1,], // 10
            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
-    ], mapW = map.length, mapH = 0;
+    ], mapW = map.length, mapH = map[0].length;
 
 // Semi-constants
 var WIDTH = window.innerWidth,
@@ -82,6 +82,7 @@ function init() {
 	projector = new t.Projector(); // Used in bullet projection
 	scene = new t.Scene(); // Holds all objects in the canvas
 	scene.fog = new t.FogExp2(0xD6F1FF, 0.0005); // color, density
+        //scene.matrixAutoUpdate = true;
 	
 	// Set up camera
 	cam = new t.PerspectiveCamera(60, ASPECT, 1, 10000); // FOV, aspect, near, far
@@ -150,18 +151,14 @@ function render() {
             a.translateX(aispeed * a.lastRandomX);
             a.translateZ(aispeed * a.lastRandomZ);
             var c = getMapSector(a.position);
-            if (c.x < 0 || c.x >= mapW || c.y < 0 || c.y >= mapH || checkWallCollision(a.position)) {
+            if (c.x < 0 || c.x >= mapW || c.y < 0 || c.y >= mapH) {
+                console.log('incolission!');
                     a.translateX(-2 * aispeed * a.lastRandomX);
                     a.translateZ(-2 * aispeed * a.lastRandomZ);
                     a.lastRandomX = Math.random() * 2 - 1;
                     a.lastRandomZ = Math.random() * 2 - 1;
             }
 
-            var cc = getMapSector(cam.position);
-            if (Date.now() > a.lastShot + 750 && distance(c.x, c.z, cc.x, cc.z) < 2) {
-                    createBullet(a);
-                    a.lastShot = Date.now();
-            }
     }
 
     renderer.render(scene, cam); // Repaint
@@ -213,22 +210,28 @@ function setupScene() {
  */
 function buildMap(l, categories, is_sub) {
     var k, j = 1;
-    /*
-     * for (k = 1; k <= l; k++) {
-        map.push([
-            1,// 0
-            getRandBetween(0,1),// 1
-            getRandBetween(0,1),// 2
-            getRandBetween(0,2),// 3
-            getRandBetween(0,2),// 4
-            getRandBetween(0,2),// 5
-            getRandBetween(0,2),// 6
-            getRandBetween(0,1),// 7
-            getRandBetween(0,1),// 8
-            getRandBetween(0,1),// 9
-        ]);
+    if ( is_sub === true ) {
+        // Short wall. Update coords and re-place walls.
+       
+        map = [];
+        scene.updateMatrixWorld();
+        console.log(scene.children.length, scene.__objects.length);
+        render();
+        for (k = 1; k <= l; k++) {
+            map.push([
+                1,// 0
+                getRandBetween(0,1),// 1
+                getRandBetween(0,1),// 2
+                getRandBetween(0,2),// 3
+                getRandBetween(0,2),// 4
+                getRandBetween(0,2),// 5
+                getRandBetween(0,2),// 6
+                getRandBetween(0,1),// 7
+                getRandBetween(0,1),// 8
+                getRandBetween(0,1),// 9
+            ]);
+        }
     }
-     */
     
     if ( categories.length > 0) {
         for (var i = 0; i < categories.length; i++) {
@@ -258,10 +261,7 @@ function buildMap(l, categories, is_sub) {
                             if ( subcat.success === true ) {
                                 flushScene();
                                 walls = [];
-                                scene.updateMatrixWorld();
-                                // Re-paint the world.
                                 buildMap(subcat.categories.length, subcat.categories, true);
-                                render();
                                 spinner.stop();
 
                             }
@@ -277,6 +277,7 @@ function buildMap(l, categories, is_sub) {
                                 spinner.stop();
                                 if ( data.success === true ) {
                                     // Products found.
+                                    console.log(data.products.length);
                                     for (var n = 1; n <= data.products.length; n++) {
                                         // Iterate n products. Put them in shelf respectively..
                                         /*
@@ -311,24 +312,12 @@ function buildMap(l, categories, is_sub) {
         }
     }
     }
-    /*      // 1  2  3  4  5  6  7  8  9
-           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 0
-           [1, 1, 0, 0, 0, 0, 0, 1, 1, 1,], // 1
-           [1, 1, 0, 0, 2, 0, 0, 0, 0, 1,], // 2
-           [1, 0, 0, 0, 0, 2, 0, 0, 0, 1,], // 3
-           [1, 0, 0, 2, 0, 0, 2, 0, 0, 1,], // 4
-           [1, 0, 0, 0, 2, 0, 0, 0, 1, 1,], // 5
-           [1, 1, 1, 0, 0, 0, 0, 1, 1, 1,], // 6
-           [1, 1, 1, 0, 0, 1, 0, 0, 1, 1,], // 7
-           [1, 1, 1, 1, 1, 1, 0, 0, 1, 1,], // 8
-           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,], // 9
-           [1, 1, 1, 0, 1, 1, 1, 1, 1, 1,], // 10
-           [1, 1, 1, 1, 1, 1, 0, 1, 1, 0,], // 11
-    */
    
     
     mapW = map.length, mapH = map[0].length;
     scene.updateMatrixWorld();
+    render();
+    console.log(scene.children.length);
 }
 
 function flushScene() {
@@ -361,7 +350,6 @@ var ai = [];
  *   An array of coordinates including the start and end positions representing
  *   the path from the starting cell to the ending cell.
  */
-
 function distance(x1, y1, x2, y2) {
 	return Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
 }
@@ -383,6 +371,7 @@ function getMapSector(v) {
  */
 function checkWallCollision(v) {
 	var c = getMapSector(v);
+       // console.log(c);
 	return map[c.x][c.z] > 0;
 }
 
