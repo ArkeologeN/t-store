@@ -246,7 +246,7 @@ function buildMap(l, categories, is_sub) {
                     wall.position.z = (j - units/2) * UNITSIZE;
                     wall.is_wall = true;
                     wall.shootFire = function(e) {
-                            var div = $("<div />")
+                            var div = $("<div />");
                             div.attr('id',TIP_ID);
                             div.css({top: e.pageY, left: e.pageX + 20, position: 'absolute', color: '#fff'});
                             div.html(this.name);
