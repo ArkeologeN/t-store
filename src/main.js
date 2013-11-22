@@ -272,37 +272,49 @@ function buildMap(l, categories, is_sub) {
                         wall.initProductsOnShelf = function(evt, o) {
                             // Put the products in shelf here.
                             spinner.start();
-                            console.log('loader start');
-                            APIRequest.loadProducts(o.ops.id, function(data) {
-                                spinner.stop();
-                                if ( data.success === true ) {
-                                    // Products found.
-                                    console.log(data.products.length);
-                                    for (var n = 1; n <= data.products.length; n++) {
-                                        // Iterate n products. Put them in shelf respectively..
-                                        /*
-                                        * var p_cube = new t.CubeGeometry(50, 50 / 3, 50);
-                                       var product = new t.Mesh(
-                                               p_cube, 
-                                               new t.MeshLambertMaterial({map: t.ImageUtils.loadTexture('images/box_100x100.png')})
-                                           );
+                            var p_cube = new t.CubeGeometry(20, 20, 20);
+                            var product = new t.Mesh(
+                                    p_cube, 
+                                    new t.MeshLambertMaterial({map: t.ImageUtils.loadTexture('images/box_100x100.png')})
+                                );
 
-                                       product.position.x = (evt.clientX / WIDTH) * 2 - 1;
-                                       //product.position.y = (evt.clientY / HEIGHT) * 2 + 1;
-                                       //product.position.z = (j - units/2) * 100;
-                                       product.position.x = (evt.pageX / j) - 20;
-                                       product.position.y = evt.pageY / 2;
-                                       // add product on shelf.
-                                       o.add(product);
-                                       scene.updateMatrixWorld();
-                                       render();
-                                       console.log(evt);
-                                        */
-                                    }
-                                } else {
-                                    // Failed Loading Products.
-                                }
-                            });
+                            product.position.x = (evt.pageX / 1) - 20;
+                            product.position.y = evt.pageY / 2;
+                            product.position.z = (1 - units/2) * 100; //
+                            // add product on shelf.
+                            o.add(product);
+                            scene.updateMatrixWorld();
+                            render();
+//                            APIRequest.loadProducts(o.ops.id, function(data) {
+//                                spinner.stop();
+//                                if ( data.success === true ) {
+//                                    // Products found.
+//                                    console.log(data.products.length);
+//                                    for (var n = 1; n <= data.products.length; n++) {
+//                                        // Iterate n products. Put them in shelf respectively..
+//                                        /*
+//                                        * var p_cube = new t.CubeGeometry(50, 50 / 3, 50);
+//                                       var product = new t.Mesh(
+//                                               p_cube, 
+//                                               new t.MeshLambertMaterial({map: t.ImageUtils.loadTexture('images/box_100x100.png')})
+//                                           );
+//
+//                                       product.position.x = (evt.clientX / WIDTH) * 2 - 1;
+//                                       //product.position.y = (evt.clientY / HEIGHT) * 2 + 1;
+//                                       //product.position.z = (j - units/2) * 100;
+//                                       product.position.x = (evt.pageX / j) - 20;
+//                                       product.position.y = evt.pageY / 2;
+//                                       // add product on shelf.
+//                                       o.add(product);
+//                                       scene.updateMatrixWorld();
+//                                       render();
+//                                       console.log(evt);
+//                                        */
+//                                    }
+//                                } else {
+//                                    // Failed Loading Products.
+//                                }
+//                            });
                         }
                     }
                     wall.ops.has_small = is_sub === true ? false : true;
